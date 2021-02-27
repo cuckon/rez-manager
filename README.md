@@ -1,3 +1,6 @@
-# rez-ls
+# Rez Managaer
 
-List all the status of rez packages.
+A rez util package that can:
+[x] List all the status of rez packages.
+[ ] Localization.
+[ ] Filter results.
