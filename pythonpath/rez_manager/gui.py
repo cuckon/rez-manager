@@ -6,6 +6,7 @@ from rez.config import config
 
 
 def generate_tooltip(package):
+    """Generate a proper tooltip for item"""
     tooltip = [package.format(
         '<h1>{name}</h1>'
         '{description}<br>'
@@ -18,6 +19,7 @@ def generate_tooltip(package):
 
 
 class ManagerWin(QtWidgets.QMainWindow):
+    """Main window class."""
     def __init__(self):
         super(ManagerWin, self).__init__()
         self.repos = []
@@ -27,9 +29,10 @@ class ManagerWin(QtWidgets.QMainWindow):
         self.spreadsheet = self.setup_spreadsheet()
         self.centralWidget().layout().addWidget(self.spreadsheet)
 
-        self.update_packages()
+        self.update_spreadsheet()
 
     def setup_ui(self):
+        """Do the general ui setup work."""
         central_widget = QtWidgets.QWidget()
         central_widget.setLayout(QtWidgets.QVBoxLayout())
         self.setCentralWidget(central_widget)
@@ -48,10 +51,10 @@ class ManagerWin(QtWidgets.QMainWindow):
         model.setHorizontalHeaderLabels(['Package'] + self.repos)
 
         view.setModel(model)
-
         return view
 
-    def update_packages(self):
+    def update_spreadsheet(self):
+        """Update the spreadsheet."""
         model = self.spreadsheet.model()
         model.setRowCount(0)
 

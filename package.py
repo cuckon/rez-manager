@@ -6,10 +6,13 @@ authors = ['John Su']
 
 version = '0.0.1'
 
+uuid = 'johnsu.rez-manager'
+
 requires = [
     'rez',
     'qt_py',
     'PyQt5',
+    'python-3'
 ]
 
 tools = [
