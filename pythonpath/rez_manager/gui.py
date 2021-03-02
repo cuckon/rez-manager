@@ -1,4 +1,5 @@
 import os
+from functools import partial
 
 from Qt import QtWidgets, QtGui, QtCore
 from rez import packages
@@ -16,6 +17,64 @@ def generate_tooltip(package):
         tooltip.append('Tools: ' + ', '.join(package.tools))
 
     return '<br>'.join(tooltip)
+
+
+def get_local_repo_index():
+    packages_path = config.get('packages_path', [])
+    local_packages_path = config.get('local_packages_path')
+    if local_packages_path in packages_path:
+        return packages_path.index(local_packages_path)
+    return -1
+
+
+def delete_local(packages, all_version):
+    print(packages, all_version)
+
+
+def _add_delete_local_menu(menu, model, indexes):
+    local_repo_table_index = get_local_repo_index() + 1
+    to_delete = []
+    for index in indexes:
+        if index.column() == local_repo_table_index:
+            item = model.itemFromIndex(index)
+            version = item.text()
+            if version:
+                to_delete.append(item.latest)
+
+    if to_delete:
+        menu.addAction(
+            'Delete Local Package',
+            partial(delete_local, to_delete, False)
+        )
+        menu.addAction(
+            'Delete Local Package(All Versions)',
+            partial(delete_local, to_delete, True)
+        )
+        menu.addSeparator()
+
+
+class SpreadsheetView(QtWidgets.QTreeView):
+    def selectedItem(self):
+        indexes = self.selectionModel().selectedIndexes()
+        for i in indexes:
+            print(i.row(), i.column())
+        return indexes[0] if indexes else None
+
+    def update(self):
+        # TODO: implement this
+        print('Update')
+
+    def contextMenuEvent(self, event):
+        indexes = self.selectionModel().selectedIndexes()
+        if not indexes:
+            return
+
+        menu = QtWidgets.QMenu(self)
+        model = self.model()
+
+        _add_delete_local_menu(menu, model, indexes)
+        menu.addAction('Update', self.update)
+        menu.exec(event.globalPos())
 
 
 class ManagerWin(QtWidgets.QMainWindow):
@@ -45,7 +104,7 @@ class ManagerWin(QtWidgets.QMainWindow):
 
 
     def setup_spreadsheet(self):
-        view = QtWidgets.QTreeView()
+        view = SpreadsheetView()
         self.repos = config.get('packages_path')
         model = QtGui.QStandardItemModel(0, len(self.repos) + 1)
         model.setHorizontalHeaderLabels(['Package'] + self.repos)
@@ -55,6 +114,9 @@ class ManagerWin(QtWidgets.QMainWindow):
 
     def update_spreadsheet(self):
         """Update the spreadsheet."""
+
+        # TODO Extract this model into RezModel
+
         model = self.spreadsheet.model()
         model.setRowCount(0)
 
@@ -72,6 +134,8 @@ class ManagerWin(QtWidgets.QMainWindow):
                 else:
                     item = QtGui.QStandardItem(str(latest.version))
                     item.setToolTip(generate_tooltip(latest))
+                    # item.setData(latest, QtCore.Qt.UserRole)
+                    item.latest = latest
                     row.append(item)
 
                     version_max = max(latest.version, version_max) \
