@@ -1,4 +1,5 @@
 import os
+import shutil
 from functools import partial
 
 from Qt import QtWidgets, QtGui, QtCore
@@ -27,30 +28,15 @@ def get_local_repo_index():
     return -1
 
 
-def delete_local(packages, all_version):
-    print(packages, all_version)
+def delete_local(packages, all_version: bool):
+    for package in packages:
+        package_dir = os.path.join(package.resource.location, package.name)
 
-
-def _add_delete_local_menu(menu, model, indexes):
-    local_repo_table_index = get_local_repo_index() + 1
-    to_delete = []
-    for index in indexes:
-        if index.column() == local_repo_table_index:
-            item = model.itemFromIndex(index)
-            version = item.text()
-            if version:
-                to_delete.append(item.latest)
-
-    if to_delete:
-        menu.addAction(
-            'Delete Local Package',
-            partial(delete_local, to_delete, False)
-        )
-        menu.addAction(
-            'Delete Local Package(All Versions)',
-            partial(delete_local, to_delete, True)
-        )
-        menu.addSeparator()
+        if all_version:
+            shutil.rmtree(package_dir)
+        else:
+            version_dir = os.path.join(package_dir, str(package.version))
+            shutil.rmtree(version_dir)
 
 
 class SpreadsheetView(QtWidgets.QTreeView):
@@ -72,9 +58,33 @@ class SpreadsheetView(QtWidgets.QTreeView):
         menu = QtWidgets.QMenu(self)
         model = self.model()
 
-        _add_delete_local_menu(menu, model, indexes)
+        self._add_delete_local_menu(menu, indexes)
         menu.addAction('Update', self.update)
         menu.exec(event.globalPos())
+
+    def _add_delete_local_menu(self, menu, indexes):
+        local_repo_table_index = get_local_repo_index() + 1
+        to_delete = []
+        model = self.model()
+
+        for index in indexes:
+            if index.column() == local_repo_table_index:
+                item = model.itemFromIndex(index)
+                version = item.text()
+                if version:
+                    to_delete.append(item.latest)
+
+        if to_delete:
+            menu.addAction(
+                'Delete Local Package(All Versions)',
+                partial(delete_local, to_delete, True)
+            )
+            menu.addAction(
+                'Delete Local Package',
+                partial(delete_local, to_delete, False)
+            )
+
+            menu.addSeparator()
 
 
 class ManagerWin(QtWidgets.QMainWindow):
@@ -92,10 +102,17 @@ class ManagerWin(QtWidgets.QMainWindow):
 
     def setup_ui(self):
         """Do the general ui setup work."""
+
+        # Layout
         central_widget = QtWidgets.QWidget()
         central_widget.setLayout(QtWidgets.QVBoxLayout())
         self.setCentralWidget(central_widget)
 
+        # Statusbar
+        statusbar = QtWidgets.QStatusBar()
+        self.setStatusBar(statusbar)
+
+        # Appearance
         self.setWindowTitle('Rez Packages Manager')
         icon_path = os.path.join(
             os.environ['MANAGER_RESOURCES_FOLDER'], 'icon.png'
