@@ -5,12 +5,13 @@ from functools import partial
 from Qt import QtWidgets, QtGui, QtCore
 from rez import packages
 from rez.config import config
+from rez.package_repository import package_repository_manager
 
 
 def generate_tooltip(package):
     """Generate a proper tooltip for item"""
     tooltip = [package.format(
-        '<h1>{name}</h1>'
+        '<h3>{name}</h3>'
         '{description}<br>'
         'Is Local: {is_local}<br>'
     )]
@@ -40,15 +41,13 @@ def delete_local(packages, all_version: bool):
 
 
 class SpreadsheetView(QtWidgets.QTreeView):
+    itemDeleted = QtCore.Signal()
+
     def selectedItem(self):
         indexes = self.selectionModel().selectedIndexes()
         for i in indexes:
             print(i.row(), i.column())
         return indexes[0] if indexes else None
-
-    def update(self):
-        # TODO: implement this
-        print('Update')
 
     def contextMenuEvent(self, event):
         indexes = self.selectionModel().selectedIndexes()
@@ -59,7 +58,7 @@ class SpreadsheetView(QtWidgets.QTreeView):
         model = self.model()
 
         self._add_delete_local_menu(menu, indexes)
-        menu.addAction('Update', self.update)
+        menu.addAction('Reload', model.reload)
         menu.exec(event.globalPos())
 
     def _add_delete_local_menu(self, menu, indexes):
@@ -77,65 +76,30 @@ class SpreadsheetView(QtWidgets.QTreeView):
         if to_delete:
             menu.addAction(
                 'Delete Local Package(All Versions)',
-                partial(delete_local, to_delete, True)
+                partial(self.on_delete_local, to_delete, True)
             )
             menu.addAction(
                 'Delete Local Package',
-                partial(delete_local, to_delete, False)
+                partial(self.on_delete_local, to_delete, False)
             )
 
             menu.addSeparator()
 
-
-class ManagerWin(QtWidgets.QMainWindow):
-    """Main window class."""
-    def __init__(self):
-        super(ManagerWin, self).__init__()
-        self.repos = []
-
-        self.setup_ui()
-
-        self.spreadsheet = self.setup_spreadsheet()
-        self.centralWidget().layout().addWidget(self.spreadsheet)
-
-        self.update_spreadsheet()
-
-    def setup_ui(self):
-        """Do the general ui setup work."""
-
-        # Layout
-        central_widget = QtWidgets.QWidget()
-        central_widget.setLayout(QtWidgets.QVBoxLayout())
-        self.setCentralWidget(central_widget)
-
-        # Statusbar
-        statusbar = QtWidgets.QStatusBar()
-        self.setStatusBar(statusbar)
-
-        # Appearance
-        self.setWindowTitle('Rez Packages Manager')
-        icon_path = os.path.join(
-            os.environ['MANAGER_RESOURCES_FOLDER'], 'icon.png'
-        )
-        self.setWindowIcon(QtGui.QIcon(icon_path))
+    def on_delete_local(self, packages, all_version):
+        delete_local(packages, all_version)
+        self.itemDeleted.emit()
 
 
-    def setup_spreadsheet(self):
-        view = SpreadsheetView()
+class RezPackagesModel(QtGui.QStandardItemModel):
+
+    def __init__(self, parent=None):
         self.repos = config.get('packages_path')
-        model = QtGui.QStandardItemModel(0, len(self.repos) + 1)
-        model.setHorizontalHeaderLabels(['Package'] + self.repos)
+        super(RezPackagesModel, self).__init__(0, len(self.repos) + 1)
+        self.setHorizontalHeaderLabels(['Package'] + self.repos)
 
-        view.setModel(model)
-        return view
-
-    def update_spreadsheet(self):
-        """Update the spreadsheet."""
-
-        # TODO Extract this model into RezModel
-
-        model = self.spreadsheet.model()
-        model.setRowCount(0)
+    def reload(self):
+        package_repository_manager.clear_caches()
+        self.setRowCount(0)
 
         for fam in packages.iter_package_families():
             row = [QtGui.QStandardItem(fam.name)]
@@ -167,4 +131,50 @@ class ManagerWin(QtWidgets.QMainWindow):
                 else:
                     row[i + 1].setForeground(QtGui.QColor('gray'))
 
-            model.appendRow(row)
+            self.appendRow(row)
+
+
+class ManagerWin(QtWidgets.QMainWindow):
+    """Main window class."""
+    def __init__(self):
+        super(ManagerWin, self).__init__()
+        self.setup_ui()
+
+        self.spreadsheet = self.setup_spreadsheet()
+        self.centralWidget().layout().addWidget(self.spreadsheet)
+
+        self._connect()
+
+        self.spreadsheet.model().reload()
+
+    def _connect(self):
+        self.spreadsheet.itemDeleted.connect(self.on_deleted)
+
+    def setup_ui(self):
+        """Do the general ui setup work."""
+
+        # Layout
+        central_widget = QtWidgets.QWidget()
+        central_widget.setLayout(QtWidgets.QVBoxLayout())
+        self.setCentralWidget(central_widget)
+
+        # Statusbar
+        statusbar = QtWidgets.QStatusBar()
+        self.setStatusBar(statusbar)
+
+        # Appearance
+        version = os.environ['REZ_MANAGER_VERSION']
+        self.setWindowTitle('Rez Packages Manager - ' + version)
+        icon_path = os.path.join(
+            os.environ['MANAGER_RESOURCES_FOLDER'], 'icon.png'
+        )
+        self.setWindowIcon(QtGui.QIcon(icon_path))
+
+    def on_deleted(self):
+        self.statusBar().showMessage('Deleted.', 4000)
+
+    def setup_spreadsheet(self):
+        view = SpreadsheetView()
+        model = RezPackagesModel()
+        view.setModel(model)
+        return view

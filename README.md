@@ -1,9 +1,11 @@
 # Rez Managaer
 
+![GUI](https://raw.githubusercontent.com/cuckon/rez-manager/master/images/GUI.png)
+
 A rez util package that can:
 - [x] List all the status of rez packages.
 - [ ] Localization.
-- [ ] Delete local package.
+- [x] Delete local package.
 - [ ] Support variants.
 - [ ] Filter & Sort the results.
 
