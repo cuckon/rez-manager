@@ -4,7 +4,7 @@
 
 A rez util package that can:
 - [x] List all the status of rez packages.
-- [ ] Localization.
+- [x] Localization.
 - [x] Delete local package.
 - [ ] Support variants.
 - [ ] Filter & Sort the results.

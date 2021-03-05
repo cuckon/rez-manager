@@ -7,6 +7,7 @@ from Qt import QtWidgets, QtGui, QtCore
 from rez import packages
 from rez.config import config
 from rez.package_repository import package_repository_manager
+from rez.package_copy import copy_package
 
 
 def generate_tooltip(package):
@@ -42,18 +43,13 @@ def delete_local(packages, all_version: bool):
 
 
 class SpreadsheetView(QtWidgets.QTreeView):
-    itemDeleted = QtCore.Signal()
+    packageDeleted = QtCore.Signal()
+    packageLocalised = QtCore.Signal()
 
     def __init__(self, parent=None):
         super(SpreadsheetView, self).__init__(parent)
         self.setSelectionBehavior(self.SelectItems)
         self.setSelectionMode(self.ExtendedSelection)
-
-    # def selectedItem(self):
-    #     indexes = self.selectionModel().selectedIndexes()
-    #     for i in indexes:
-    #         print(i.row(), i.column())
-    #     return indexes[0] if indexes else None
 
     def contextMenuEvent(self, event):
         indexes = self.selectionModel().selectedIndexes()
@@ -63,32 +59,39 @@ class SpreadsheetView(QtWidgets.QTreeView):
         menu = QtWidgets.QMenu(self)
         model = self.model()
 
-        self._add_delete_local_menu(menu, indexes)
+        self._add_multiple_packages_menu(menu, indexes)
         self._add_one_package_menu(menu, indexes)
 
         menu.addAction(qta.icon('fa.refresh'), 'Update', model.reload)
         menu.exec(event.globalPos())
 
     def _add_one_package_menu(self, menu, indexes):
-        if indexes and self.model().itemFromIndex(indexes[0]).text():
+        if len(indexes) == 1 and indexes[0].column() != 0 and \
+            self.model().itemFromIndex(indexes[0]).text():
             menu.addAction(
                 qta.icon('fa.folder'),
                 'Open Folder',
                 partial(self.open_folder, indexes[0])
             )
 
-    def _add_delete_local_menu(self, menu, indexes):
+    def _add_multiple_packages_menu(self, menu, indexes):
         local_repo_table_index = get_local_repo_index() + 1
         to_delete = []
+        to_localise = []
         model = self.model()
 
         for index in indexes:
+            item = model.itemFromIndex(index)
+            version = item.text()
+
             if index.column() == local_repo_table_index:
-                item = model.itemFromIndex(index)
-                version = item.text()
                 if version:
                     to_delete.append(item.latest)
+            elif index.column() not in [0, local_repo_table_index]:
+                if version:
+                    to_localise.append(item.latest)
 
+        # TODO: #2 - Check if it's empty package folder
         if to_delete:
             menu.addAction(
                 'Delete Local Package(All Versions)',
@@ -99,11 +102,19 @@ class SpreadsheetView(QtWidgets.QTreeView):
                 partial(self.on_delete_local, to_delete, False)
             )
 
+        if to_localise:
+            menu.addAction(
+                qta.icon('fa.cloud-download'),
+                'Localise',
+                partial(self.localise, to_localise)
+            )
+
+        if to_delete or to_localise:
             menu.addSeparator()
 
     def on_delete_local(self, packages, all_version):
         delete_local(packages, all_version)
-        self.itemDeleted.emit()
+        self.packageDeleted.emit()
 
     def open_folder(self, index):
         item = self.model().itemFromIndex(index)
@@ -116,6 +127,13 @@ class SpreadsheetView(QtWidgets.QTreeView):
         )
         os.startfile(folder)
 
+    def localise(self, packages):
+        local_repo = config.get('local_packages_path')
+        for package in packages:
+            copy_package(package, local_repo, keep_timestamp=True)
+        self.packageLocalised.emit()
+
+
 class RezPackagesModel(QtGui.QStandardItemModel):
 
     def __init__(self, parent=None):
@@ -124,6 +142,8 @@ class RezPackagesModel(QtGui.QStandardItemModel):
         self.setHorizontalHeaderLabels(['Package'] + self.repos)
 
     def reload(self):
+        # TODO: #1 - keep scrolling position.
+
         package_repository_manager.clear_caches()
         self.setRowCount(0)
 
@@ -174,7 +194,16 @@ class ManagerWin(QtWidgets.QMainWindow):
         self.spreadsheet.model().reload()
 
     def _connect(self):
-        self.spreadsheet.itemDeleted.connect(self.on_deleted)
+        slot_reload = self.spreadsheet.model().reload
+        self.spreadsheet.packageDeleted.connect(
+            partial(self.show_status_message, 'Deleted.')
+        )
+        self.spreadsheet.packageLocalised.connect(
+            partial(self.show_status_message, 'Localised.')
+        )
+        self.spreadsheet.packageDeleted.connect(slot_reload)
+        self.spreadsheet.packageLocalised.connect(slot_reload)
+
 
     def setup_ui(self):
         """Do the general ui setup work."""
@@ -196,8 +225,8 @@ class ManagerWin(QtWidgets.QMainWindow):
         )
         self.setWindowIcon(QtGui.QIcon(icon_path))
 
-    def on_deleted(self):
-        self.statusBar().showMessage('Deleted.', 4000)
+    def show_status_message(self, message):
+        self.statusBar().showMessage(message, 4000)
 
     def setup_spreadsheet(self):
         view = SpreadsheetView()
