@@ -8,6 +8,7 @@ A rez util package that can:
 - [x] Delete local package.
 - [ ] Support variants.
 - [ ] Filter & Sort the results.
+- [x] Open folder of selected package.
 
 Please note that the deploy scripts is not contained in this repository. I
 suppose it varies from place to place. The simplest way to deploy it is just

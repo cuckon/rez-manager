@@ -2,6 +2,7 @@ import os
 import shutil
 from functools import partial
 
+import qtawesome as qta
 from Qt import QtWidgets, QtGui, QtCore
 from rez import packages
 from rez.config import config
@@ -43,11 +44,16 @@ def delete_local(packages, all_version: bool):
 class SpreadsheetView(QtWidgets.QTreeView):
     itemDeleted = QtCore.Signal()
 
-    def selectedItem(self):
-        indexes = self.selectionModel().selectedIndexes()
-        for i in indexes:
-            print(i.row(), i.column())
-        return indexes[0] if indexes else None
+    def __init__(self, parent=None):
+        super(SpreadsheetView, self).__init__(parent)
+        self.setSelectionBehavior(self.SelectItems)
+        self.setSelectionMode(self.ExtendedSelection)
+
+    # def selectedItem(self):
+    #     indexes = self.selectionModel().selectedIndexes()
+    #     for i in indexes:
+    #         print(i.row(), i.column())
+    #     return indexes[0] if indexes else None
 
     def contextMenuEvent(self, event):
         indexes = self.selectionModel().selectedIndexes()
@@ -58,8 +64,18 @@ class SpreadsheetView(QtWidgets.QTreeView):
         model = self.model()
 
         self._add_delete_local_menu(menu, indexes)
-        menu.addAction('Reload', model.reload)
+        self._add_one_package_menu(menu, indexes)
+
+        menu.addAction(qta.icon('fa.refresh'), 'Update', model.reload)
         menu.exec(event.globalPos())
+
+    def _add_one_package_menu(self, menu, indexes):
+        if indexes and self.model().itemFromIndex(indexes[0]).text():
+            menu.addAction(
+                qta.icon('fa.folder'),
+                'Open Folder',
+                partial(self.open_folder, indexes[0])
+            )
 
     def _add_delete_local_menu(self, menu, indexes):
         local_repo_table_index = get_local_repo_index() + 1
@@ -89,6 +105,16 @@ class SpreadsheetView(QtWidgets.QTreeView):
         delete_local(packages, all_version)
         self.itemDeleted.emit()
 
+    def open_folder(self, index):
+        item = self.model().itemFromIndex(index)
+        if not item.latest:
+            return
+        folder = os.path.join(
+            item.latest.resource.location,
+            item.latest.name,
+            str(item.latest.version),
+        )
+        os.startfile(folder)
 
 class RezPackagesModel(QtGui.QStandardItemModel):
 

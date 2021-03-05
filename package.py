@@ -4,15 +4,15 @@ name = 'manager'
 
 authors = ['John Su']
 
-version = '0.0.1b1'
+version = '0.0.1b2'
 
 uuid = 'johnsu.rez-manager'
 
 requires = [
     'rez',
-    'qt_py',
     'PyQt5',
-    'python-3'
+    'python-3',
+    'QtAwesome-0.7.3',
 ]
 
 tools = [
@@ -21,7 +21,8 @@ tools = [
 
 
 def commands():
-    env.PYTHONPATH.append('{root}/pythonpath')
+    env.PYTHONPATH.append('{root}/src')
+    env.PYTHONPATH.append('{root}/vendors')
     env.PATH.append('{root}/path')
     env.MANAGER_RESOURCES_FOLDER = '{root}/resources'
 
