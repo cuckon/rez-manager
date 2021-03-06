@@ -12,31 +12,32 @@ from rez.package_copy import copy_package
 
 def generate_item_tooltip(item):
     """Generate a proper tooltip for item"""
+    if item.empty_folder:
+        return '[Empty folder]'
+
     latest = item.latest
     if not latest:
         return ''
 
     tooltip = []
-    if item.empty_folder:
-        tooltip.append('[Empty folder]')
-    else:
-        if latest.description:
-            tooltip.append(latest.format('Description: {description}'))
-        if latest.variants:
-            variants_string = ['Variants: ']
 
-            # `latest.variants` Example:
-            # [
-            #   [PackageRequest('python-2.7')],
-            #   [PackageRequest('python-3.7')],
-            # ]
-            for variant in latest.variants:
-                variant_str = ' * '
-                variant_str += '-'.join(p.safe_str() for p in variant)
-                variants_string.append(variant_str)
-            tooltip.append('\n'.join(variants_string))
-        if latest.tools:
-            tooltip.append('Tools: ' + ', '.join(latest.tools))
+    if latest.description:
+        tooltip.append(latest.format('Description: {description}'))
+    if latest.variants:
+        variants_string = ['Variants: ']
+
+        # `latest.variants` Example:
+        # [
+        #   [PackageRequest('python-2.7')],
+        #   [PackageRequest('python-3.7')],
+        # ]
+        for variant in latest.variants:
+            variant_str = ' * '
+            variant_str += ' | '.join(p.safe_str() for p in variant)
+            variants_string.append(variant_str)
+        tooltip.append('\n'.join(variants_string))
+    if latest.tools:
+        tooltip.append('Tools: ' + ', '.join(latest.tools))
 
     return '\n'.join(tooltip)
 
@@ -139,7 +140,7 @@ class SpreadsheetView(QtWidgets.QTreeView):
         if empty_package_folders:
             actions.append(menu.addAction(
                 'Delete Empty Package Folder',
-                partial(delete_empty_folder, empty_package_folders)
+                partial(self.delete_empty_folder, empty_package_folders)
             ))
 
         return actions
@@ -166,7 +167,6 @@ class SpreadsheetView(QtWidgets.QTreeView):
             ))
 
         return actions
-
 
     def _add_multiple_packages_menu(self, menu, indexes):
         local_repo_table_index = get_local_repo_index() + 1
@@ -213,6 +213,18 @@ class SpreadsheetView(QtWidgets.QTreeView):
         self.packageLocalised.emit()
 
 
+# class RezPackagesProxyModel(QtCore.QSortFilterProxyModel):
+#     def __init__(self, parent=None):
+#         super(RezPackagesProxyModel, self).__init__(parent)
+#         self.setFilterKeyColumn(0)
+
+#     def reload(self):
+#         return self.sourceModel().reload()
+
+#     def itemFromIndex(self, index):
+#         return self.sourceModel().itemFromIndex(index)
+
+
 class RezPackagesModel(QtGui.QStandardItemModel):
 
     def __init__(self, parent=None):
@@ -221,18 +233,17 @@ class RezPackagesModel(QtGui.QStandardItemModel):
         self.setHorizontalHeaderLabels(['Package'] + self.repos)
 
     def reload(self):
-        # TODO: #1 - keep scrolling position.
-
         package_repository_manager.clear_caches()
-        self.setRowCount(0)
+        families = list(packages.iter_package_families())
+        self.setRowCount(len(families))
 
-        for fam in packages.iter_package_families():
-            row = [QtGui.QStandardItem(fam.name)]
+        for row, fam in enumerate(families):
+            self.setItem(row, 0, QtGui.QStandardItem(fam.name))
             versions = [None]
             version_max = None
 
             # Fill the spreadsheet
-            for repo in self.repos:
+            for irepo, repo in enumerate(self.repos):
                 latest = packages.get_latest_package(fam.name, paths=[repo])
                 package_folder = os.path.join(repo, fam.name)
 
@@ -252,9 +263,9 @@ class RezPackagesModel(QtGui.QStandardItemModel):
                     versions.append(latest.version or None)
 
                 item.setText(generate_item_text(item))
-                item.setToolTip(generate_item_tooltip(item))
-                row.append(item)
 
+                item.setToolTip(generate_item_tooltip(item))
+                self.setItem(row, irepo + 1, item)
 
             # Find the winner
             winner_found = False
@@ -262,9 +273,7 @@ class RezPackagesModel(QtGui.QStandardItemModel):
                 if not winner_found and versions[i + 1] and versions[i + 1] == version_max:
                     winner_found = True
                 else:
-                    row[i + 1].setForeground(QtGui.QColor('gray'))
-
-            self.appendRow(row)
+                    self.item(row, i + 1).setForeground(QtGui.QColor('gray'))
 
 
 class ManagerWin(QtWidgets.QMainWindow):
@@ -318,5 +327,8 @@ class ManagerWin(QtWidgets.QMainWindow):
     def setup_spreadsheet(self):
         view = SpreadsheetView()
         model = RezPackagesModel()
+        # proxy_model = RezPackagesProxyModel()
+        # proxy_model.setSourceModel(model)
+        # view.setModel(proxy_model)
         view.setModel(model)
         return view
