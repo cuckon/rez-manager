@@ -10,17 +10,32 @@ from rez.package_repository import package_repository_manager
 from rez.package_copy import copy_package
 
 
-def generate_tooltip(package):
+def generate_item_tooltip(item):
     """Generate a proper tooltip for item"""
-    tooltip = [package.format(
-        '<h3>{name}</h3>'
-        '{description}<br>'
-        'Is Local: {is_local}<br>'
-    )]
-    if package.tools:
-        tooltip.append('Tools: ' + ', '.join(package.tools))
+    latest = item.latest
+    if not latest:
+        return ''
 
-    return '<br>'.join(tooltip)
+    tooltip = []
+    if item.empty_folder:
+        tooltip.append('[Empty folder]')
+    else:
+        if latest.description:
+            tooltip.append(latest.format('Description: {description}'))
+        if latest.tools:
+            tooltip.append('Tools: ' + ', '.join(latest.tools))
+
+    return '\n'.join(tooltip)
+
+
+def generate_item_text(item):
+    if item.latest:
+        return str(item.latest.version)
+
+    if item.empty_folder:
+        return '-'
+
+    return ''
 
 
 def get_local_repo_index():
@@ -38,8 +53,17 @@ def delete_local(packages, all_version: bool):
         if all_version:
             shutil.rmtree(package_dir)
         else:
-            version_dir = os.path.join(package_dir, str(package.version))
-            shutil.rmtree(version_dir)
+            children = os.listdir(package_dir)
+
+            # Remove package folder instead of version folder to avoid leaving
+            # empty folder
+            if len(children) == 1:
+                assert children[0] == str(package.version)
+                to_delete = package_dir
+            else:
+                to_delete = os.path.join(package_dir, str(package.version))
+
+            shutil.rmtree(to_delete)
 
 
 class SpreadsheetView(QtWidgets.QTreeView):
@@ -74,46 +98,88 @@ class SpreadsheetView(QtWidgets.QTreeView):
                 partial(self.open_folder, indexes[0])
             )
 
-    def _add_multiple_packages_menu(self, menu, indexes):
-        local_repo_table_index = get_local_repo_index() + 1
+    def _add_delete_packages_menu(
+            self, indexes, model, local_repo_table_index, menu
+    ):
         to_delete = []
+        empty_package_folders = []
+
+        for index in indexes:
+            item = model.itemFromIndex(index)
+            if index.column() == local_repo_table_index:
+                if item.latest:
+                    to_delete.append(item.latest)
+                elif item.empty_folder:
+                    empty_package_folders.append(item.empty_folder)
+
+        actions = []
+        if to_delete:
+            actions.append(menu.addAction(
+                'Delete Local Packages (All Versions)',
+                partial(self.on_delete_local, to_delete, True)
+            ))
+            actions.append(menu.addAction(
+                'Delete Local Packages',
+                partial(self.on_delete_local, to_delete, False)
+            ))
+
+        if empty_package_folders:
+            actions.append(menu.addAction(
+                'Delete Empty Package Folder',
+                partial(delete_empty_folder, empty_package_folders)
+            ))
+
+        return actions
+
+    def _add_localise_package_menu(
+            self, indexes, model, local_repo_table_index, menu
+    ):
         to_localise = []
-        model = self.model()
 
         for index in indexes:
             item = model.itemFromIndex(index)
             version = item.text()
 
-            if index.column() == local_repo_table_index:
-                if version:
-                    to_delete.append(item.latest)
-            elif index.column() not in [0, local_repo_table_index]:
+            if index.column() not in [0, local_repo_table_index]:
                 if version:
                     to_localise.append(item.latest)
 
-        # TODO: #2 - Check if it's empty package folder
-        if to_delete:
-            menu.addAction(
-                'Delete Local Package(All Versions)',
-                partial(self.on_delete_local, to_delete, True)
-            )
-            menu.addAction(
-                'Delete Local Package',
-                partial(self.on_delete_local, to_delete, False)
-            )
-
+        actions = []
         if to_localise:
-            menu.addAction(
+            actions.append(menu.addAction(
                 qta.icon('fa.cloud-download'),
                 'Localise',
                 partial(self.localise, to_localise)
-            )
+            ))
 
-        if to_delete or to_localise:
+        return actions
+
+
+    def _add_multiple_packages_menu(self, menu, indexes):
+        local_repo_table_index = get_local_repo_index() + 1
+        model = self.model()
+
+        actions = [
+            self._add_delete_packages_menu(
+                indexes, model, local_repo_table_index, menu
+            )
+        ]
+        actions.extend(
+            self._add_localise_package_menu(
+                indexes, model, local_repo_table_index, menu
+            )
+        )
+
+        if actions:
             menu.addSeparator()
 
     def on_delete_local(self, packages, all_version):
         delete_local(packages, all_version)
+        self.packageDeleted.emit()
+
+    def delete_empty_folder(self, folders):
+        for folder in folders:
+            shutil.rmtree(folder)
         self.packageDeleted.emit()
 
     def open_folder(self, index):
@@ -155,19 +221,27 @@ class RezPackagesModel(QtGui.QStandardItemModel):
             # Fill the spreadsheet
             for repo in self.repos:
                 latest = packages.get_latest_package(fam.name, paths=[repo])
+                package_folder = os.path.join(repo, fam.name)
+
+                item = QtGui.QStandardItem()
+                item.latest = None
+                item.empty_folder = None
+
                 if not latest:
-                    row.append(QtGui.QStandardItem(''))
                     versions.append(None)
+                    if os.path.isdir(os.path.join(repo, fam.name)):
+                        item.empty_folder = package_folder
                 else:
-                    item = QtGui.QStandardItem(str(latest.version))
-                    item.setToolTip(generate_tooltip(latest))
-                    # item.setData(latest, QtCore.Qt.UserRole)
                     item.latest = latest
-                    row.append(item)
 
                     version_max = max(latest.version, version_max) \
                         if version_max else latest.version
                     versions.append(latest.version or None)
+
+                item.setText(generate_item_text(item))
+                item.setToolTip(generate_item_tooltip(item))
+                row.append(item)
+
 
             # Find the winner
             winner_found = False
