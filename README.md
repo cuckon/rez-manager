@@ -6,7 +6,7 @@ A rez util package that can:
 - [x] List all the status of rez packages.
 - [x] Localization.
 - [x] Delete local package.
-- [ ] Support variants.
+- [x] Support variants.
 - [ ] Filter & Sort the results.
 - [x] Open folder of selected package.
 

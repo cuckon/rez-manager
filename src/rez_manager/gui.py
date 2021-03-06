@@ -22,6 +22,19 @@ def generate_item_tooltip(item):
     else:
         if latest.description:
             tooltip.append(latest.format('Description: {description}'))
+        if latest.variants:
+            variants_string = ['Variants: ']
+
+            # `latest.variants` Example:
+            # [
+            #   [PackageRequest('python-2.7')],
+            #   [PackageRequest('python-3.7')],
+            # ]
+            for variant in latest.variants:
+                variant_str = ' * '
+                variant_str += '-'.join(p.safe_str() for p in variant)
+                variants_string.append(variant_str)
+            tooltip.append('\n'.join(variants_string))
         if latest.tools:
             tooltip.append('Tools: ' + ', '.join(latest.tools))
 
