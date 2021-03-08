@@ -4,7 +4,7 @@ name = 'manager'
 
 authors = ['John Su']
 
-version = '0.0.1b2'
+version = '0.0.1b3'
 
 uuid = 'johnsu.rez-manager'
 
