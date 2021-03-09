@@ -1,5 +1,6 @@
 import os
 import shutil
+import logging
 from functools import partial
 
 import qtawesome as qta
@@ -7,6 +8,8 @@ from Qt import QtWidgets, QtCore
 from rez import packages
 from rez.config import config
 from rez.package_copy import copy_package
+
+from .utils import catch_exception
 
 
 def get_local_repo_index():
@@ -17,12 +20,17 @@ def get_local_repo_index():
     return -1
 
 
+def format_list(list_of_str):
+    return '\n'.join(' - ' + line for line in list_of_str)
+
+
 def delete_local(packages, all_version: bool):
+    folders_deleted = []
     for package in packages:
         package_dir = os.path.join(package.resource.location, package.name)
 
         if all_version:
-            shutil.rmtree(package_dir)
+            to_delete = package_dir
         else:
             children = os.listdir(package_dir)
 
@@ -33,8 +41,9 @@ def delete_local(packages, all_version: bool):
                 to_delete = package_dir
             else:
                 to_delete = os.path.join(package_dir, str(package.version))
-
-            shutil.rmtree(to_delete)
+        shutil.rmtree(to_delete)
+        folders_deleted.append(to_delete)
+    return folders_deleted
 
 
 class SpreadsheetView(QtWidgets.QTreeView):
@@ -45,6 +54,7 @@ class SpreadsheetView(QtWidgets.QTreeView):
         super(SpreadsheetView, self).__init__(parent)
         self.setSelectionBehavior(self.SelectItems)
         self.setSelectionMode(self.ExtendedSelection)
+        self.logger = logging.getLogger(__name__)
 
     def contextMenuEvent(self, event):
         indexes = self.selectionModel().selectedIndexes()
@@ -143,15 +153,22 @@ class SpreadsheetView(QtWidgets.QTreeView):
         if actions:
             menu.addSeparator()
 
+    @catch_exception
     def on_delete_local(self, packages, all_version):
-        delete_local(packages, all_version)
+        self.logger.info('Deleting..')
+        folders_deleted = delete_local(packages, all_version)
         self.packageDeleted.emit()
+        self.logger.info(f'Folder(s) deleted:\n' + format_list(folders_deleted))
 
+    @catch_exception
     def delete_empty_folder(self, folders):
+        self.logger.info('Deleting..')
         for folder in folders:
             shutil.rmtree(folder)
+        self.logger.info(f'Folder(s) deleted:\n' + format_list(folders))
         self.packageDeleted.emit()
 
+    @catch_exception
     def open_folder(self, index):
         item = self.model().itemFromIndex(index)
         if not item.latest:
@@ -163,8 +180,11 @@ class SpreadsheetView(QtWidgets.QTreeView):
         )
         os.startfile(folder)
 
+    @catch_exception
     def localise(self, packages):
         local_repo = config.get('local_packages_path')
+        self.logger.info('Localising..')
         for package in packages:
             copy_package(package, local_repo, keep_timestamp=True)
+        self.logger.info(f'{len(packages)} packages localised.')
         self.packageLocalised.emit()

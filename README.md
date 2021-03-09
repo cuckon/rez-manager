@@ -12,6 +12,11 @@ A rez util package that can:
 - [x] Open folder of selected package.
 - [ ] Work with rez in separate thread.
 
+# Features
+
+TBD.
+
+# Deployment
 Please note that the deploy scripts is not contained in this repository. I
 suppose it varies from place to place. The simplest way to deploy it is just
 copying the contents to one of your rez repository folder.
