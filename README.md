@@ -14,7 +14,28 @@ A rez util package that can:
 
 # Features
 
-TBD.
+## Informative Spreadsheet
+
+![](https://raw.githubusercontent.com/cuckon/rez-manager/master/images/spreadsheet.gif)
+
+ - Gray cells package are shadowed by the black ones.
+ - Description, tools, variants are shown in tooltips.
+ - Package repository are represented by columns.
+
+# Highly contextual RMB menu.
+
+![](https://raw.githubusercontent.com/cuckon/rez-manager/master/images/localization.gif)
+
+Copy selected packages from remote repositories to local repositories at one click.
+
+![](https://raw.githubusercontent.com/cuckon/rez-manager/master/images/open.gif)
+
+Reveal the package folder by menu.
+
+![](https://raw.githubusercontent.com/cuckon/rez-manager/master/images/delete-package.gif)
+
+You can delete the local package(s) of latest version or all versions.
+
 
 # Deployment
 Please note that the deploy scripts is not contained in this repository. I
