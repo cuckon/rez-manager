@@ -5,7 +5,6 @@ from functools import partial
 
 import qtawesome as qta
 from Qt import QtWidgets, QtCore
-from rez import packages
 from rez.config import config
 from rez.package_copy import copy_package
 
@@ -72,7 +71,7 @@ class SpreadsheetView(QtWidgets.QTreeView):
 
     def _add_one_package_menu(self, menu, indexes):
         if len(indexes) == 1 and indexes[0].column() != 0 and \
-            self.model().itemFromIndex(indexes[0]).text():
+                self.model().itemFromIndex(indexes[0]).text():
             menu.addAction(
                 qta.icon('fa.folder'),
                 'Open Folder',
@@ -158,14 +157,14 @@ class SpreadsheetView(QtWidgets.QTreeView):
         self.logger.info('Deleting..')
         folders_deleted = delete_local(packages, all_version)
         self.packageDeleted.emit()
-        self.logger.info(f'Folder(s) deleted:\n' + format_list(folders_deleted))
+        self.logger.info('Folder(s) deleted:\n' + format_list(folders_deleted))
 
     @catch_exception
     def delete_empty_folder(self, folders):
         self.logger.info('Deleting..')
         for folder in folders:
             shutil.rmtree(folder)
-        self.logger.info(f'Folder(s) deleted:\n' + format_list(folders))
+        self.logger.info('Folder(s) deleted:\n' + format_list(folders))
         self.packageDeleted.emit()
 
     @catch_exception

@@ -33,7 +33,7 @@ class ManagerWin(QtWidgets.QMainWindow):
 
         self.log_widget = QtWidgets.QTextEdit()
         self.splitter.addWidget(self.log_widget)
-        self.splitter.setSizes([800,400])
+        self.splitter.setSizes([800, 400])
 
         self.logger = _setup_logger(self.log_widget)
 

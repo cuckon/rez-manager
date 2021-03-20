@@ -96,14 +96,17 @@ class RezPackagesModel(QtGui.QStandardItemModel):
         # Find the winner
         winner_found = False
         for i in range(len(self.repos)):
-            if not winner_found and versions[i + 1] and versions[i + 1] == version_max:
+            if (
+                not winner_found and versions[i + 1] and
+                versions[i + 1] == version_max
+            ):
                 winner_found = True
             else:
                 self.item(row, i + 1).setForeground(QtGui.QColor('gray'))
 
     @catch_exception
     def reload(self):
-        self.logger.info(f'Reloading..')
+        self.logger.info('Reloading..')
         package_repository_manager.clear_caches()
         families = list(packages.iter_package_families())
         self.setRowCount(len(families))

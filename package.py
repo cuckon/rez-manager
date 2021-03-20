@@ -21,6 +21,7 @@ tools = [
 
 
 def commands():
+
     env.PYTHONPATH.append('{root}/src')
     env.PYTHONPATH.append('{root}/vendors')
     env.PATH.append('{root}/path')
