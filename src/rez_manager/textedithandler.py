@@ -3,7 +3,7 @@ import re
 import html
 import bisect
 
-from Qt import QtGui, QtCore
+from Qt import QtCore
 
 
 def log_color(level, dark_text=True):

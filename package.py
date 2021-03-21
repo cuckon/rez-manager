@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
-name = 'manager'
+name = 'rez_manager'
 
 authors = ['John Su']
 
-version = '1.0.0'
+version = '1.0.1'
 
 uuid = 'johnsu.rez-manager'
 
@@ -18,6 +18,13 @@ requires = [
 tools = [
     'manager',
 ]
+
+tests = {
+    'test': {
+        'command': 'pytest',
+        'requires': ['python-3', 'pytest', 'pytest_qt'],
+    },
+}
 
 
 def commands():

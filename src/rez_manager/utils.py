@@ -1,4 +1,3 @@
-import traceback
 import logging
 
 
@@ -13,6 +12,6 @@ def catch_exception(fn):
             fn(*args, **kwargs)
         except Exception:
             logger = logging.getLogger('rez_manager')
-            logger.exception(f'Exception encountered.')
+            logger.exception('Exception encountered.')
 
     return _wrapper

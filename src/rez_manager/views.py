@@ -6,7 +6,6 @@ from functools import partial
 import qtawesome as qta
 from Qt import QtWidgets, QtCore
 from rez.config import config
-from rez.package_copy import copy_package
 
 from .utils import catch_exception
 
@@ -47,7 +46,7 @@ def delete_local(packages, all_version: bool):
 
 class SpreadsheetView(QtWidgets.QTreeView):
     packageDeleted = QtCore.Signal()
-    packageLocalised = QtCore.Signal()
+    # packageLocalised = QtCore.Signal()
 
     def __init__(self, parent=None):
         super(SpreadsheetView, self).__init__(parent)
@@ -129,7 +128,7 @@ class SpreadsheetView(QtWidgets.QTreeView):
             actions.append(menu.addAction(
                 qta.icon('fa.cloud-download'),
                 'Localise',
-                partial(self.localise, to_localise)
+                partial(self.model().localise, to_localise)
             ))
 
         return actions
@@ -179,11 +178,11 @@ class SpreadsheetView(QtWidgets.QTreeView):
         )
         os.startfile(folder)
 
-    @catch_exception
-    def localise(self, packages):
-        local_repo = config.get('local_packages_path')
-        self.logger.info('Localising..')
-        for package in packages:
-            copy_package(package, local_repo, keep_timestamp=True)
-        self.logger.info(f'{len(packages)} packages localised.')
-        self.packageLocalised.emit()
+    # @catch_exception
+    # def localise(self, packages):
+    #     local_repo = config.get('local_packages_path')
+    #     self.logger.info('Localising..')
+    #     for package in packages:
+    #         copy_package(package, local_repo, keep_timestamp=True)
+    #     self.logger.info(f'{len(packages)} packages localised.')
+    #     self.packageLocalised.emit()

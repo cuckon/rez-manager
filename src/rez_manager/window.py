@@ -42,14 +42,14 @@ class ManagerWin(QtWidgets.QMainWindow):
 
     def _connect(self):
         slot_reload = self.spreadsheet.model().reload
+        model = self.spreadsheet.model()
+
         self.spreadsheet.packageDeleted.connect(
             partial(self.show_status_message, 'Deleted.')
         )
-        self.spreadsheet.packageLocalised.connect(
-            partial(self.show_status_message, 'Localised.')
-        )
+
         self.spreadsheet.packageDeleted.connect(slot_reload)
-        self.spreadsheet.packageLocalised.connect(slot_reload)
+        model.packagesChanged.connect(slot_reload)
 
     def setup_window(self):
         """Do the general ui setup work."""
@@ -63,7 +63,7 @@ class ManagerWin(QtWidgets.QMainWindow):
         self.setStatusBar(statusbar)
 
         # Appearance
-        version = os.environ['REZ_MANAGER_VERSION']
+        version = os.environ['REZ_REZ_MANAGER_VERSION']
         self.setWindowTitle('Rez Packages Manager - ' + version)
         icon_path = os.path.join(
             os.environ['MANAGER_RESOURCES_FOLDER'], 'icon.png'
