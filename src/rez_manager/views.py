@@ -6,6 +6,7 @@ from functools import partial
 import qtawesome as qta
 from Qt import QtWidgets, QtCore
 from rez.config import config
+from rez.package_copy import copy_package
 
 from .utils import catch_exception
 
@@ -45,8 +46,7 @@ def delete_local(packages, all_version: bool):
 
 
 class SpreadsheetView(QtWidgets.QTreeView):
-    packageDeleted = QtCore.Signal()
-    # packageLocalised = QtCore.Signal()
+    packagesChanged = QtCore.Signal()
 
     def __init__(self, parent=None):
         super(SpreadsheetView, self).__init__(parent)
@@ -128,7 +128,7 @@ class SpreadsheetView(QtWidgets.QTreeView):
             actions.append(menu.addAction(
                 qta.icon('fa.cloud-download'),
                 'Localise',
-                partial(self.model().localise, to_localise)
+                partial(self.localise, to_localise)
             ))
 
         return actions
@@ -155,7 +155,7 @@ class SpreadsheetView(QtWidgets.QTreeView):
     def on_delete_local(self, packages, all_version):
         self.logger.info('Deleting..')
         folders_deleted = delete_local(packages, all_version)
-        self.packageDeleted.emit()
+        self.packagesChanged.emit()
         self.logger.info('Folder(s) deleted:\n' + format_list(folders_deleted))
 
     @catch_exception
@@ -164,7 +164,7 @@ class SpreadsheetView(QtWidgets.QTreeView):
         for folder in folders:
             shutil.rmtree(folder)
         self.logger.info('Folder(s) deleted:\n' + format_list(folders))
-        self.packageDeleted.emit()
+        self.packagesChanged.emit()
 
     @catch_exception
     def open_folder(self, index):
@@ -178,11 +178,11 @@ class SpreadsheetView(QtWidgets.QTreeView):
         )
         os.startfile(folder)
 
-    # @catch_exception
-    # def localise(self, packages):
-    #     local_repo = config.get('local_packages_path')
-    #     self.logger.info('Localising..')
-    #     for package in packages:
-    #         copy_package(package, local_repo, keep_timestamp=True)
-    #     self.logger.info(f'{len(packages)} packages localised.')
-    #     self.packageLocalised.emit()
+    @catch_exception
+    def localise(self, packages):
+        local_repo = config.get('local_packages_path')
+        self.logger.info('Localising..')
+        for package in packages:
+            copy_package(package, local_repo, keep_timestamp=True)
+        self.logger.info(f'{len(packages)} packages localised.')
+        self.packagesChanged.emit()

@@ -41,15 +41,9 @@ class ManagerWin(QtWidgets.QMainWindow):
         self.spreadsheet.model().reload()
 
     def _connect(self):
-        slot_reload = self.spreadsheet.model().reload
-        model = self.spreadsheet.model()
-
-        self.spreadsheet.packageDeleted.connect(
-            partial(self.show_status_message, 'Deleted.')
+        self.spreadsheet.packagesChanged.connect(
+            self.spreadsheet.model().reload
         )
-
-        self.spreadsheet.packageDeleted.connect(slot_reload)
-        model.packagesChanged.connect(slot_reload)
 
     def setup_window(self):
         """Do the general ui setup work."""

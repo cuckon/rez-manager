@@ -4,7 +4,7 @@ name = 'rez_manager'
 
 authors = ['John Su']
 
-version = '1.0.1'
+version = '2.0.0'
 
 uuid = 'johnsu.rez-manager'
 
@@ -34,4 +34,4 @@ def commands():
     env.PATH.append('{root}/path')
     env.MANAGER_RESOURCES_FOLDER = '{root}/resources'
 
-    alias('manager', 'python -m rez_manager')
+    alias('rez-manager', 'python -m rez_manager')

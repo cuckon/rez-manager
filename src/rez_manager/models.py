@@ -5,7 +5,6 @@ from Qt import QtGui, QtCore
 from rez import packages
 from rez.config import config
 from rez.package_repository import package_repository_manager
-from rez.package_copy import copy_package
 
 from .utils import catch_exception
 
@@ -55,7 +54,6 @@ def generate_item_text(item):
 class RezPackagesModel(QtGui.QStandardItemModel):
     cookingStarted = QtCore.Signal()
     cookingEnded = QtCore.Signal()
-    packagesChanged = QtCore.Signal()
 
     def __init__(self, parent=None):
         self.repos = config.get('packages_path')
@@ -110,19 +108,13 @@ class RezPackagesModel(QtGui.QStandardItemModel):
     def reload(self):
         self.logger.info('Reloading..')
         package_repository_manager.clear_caches()
-        family_names = set(f.name for f in packages.iter_package_families())
+        family_names = list(set(
+            f.name for f in packages.iter_package_families()
+        ))
         self.setRowCount(len(family_names))
+        family_names.sort(key=lambda x: x.lower())
 
         for row, family_name in enumerate(family_names):
             self._make_row(row, family_name)
 
         self.logger.info(f'{len(family_names)} packages collected.')
-
-    @catch_exception
-    def localise(self, packages):
-        local_repo = config.get('local_packages_path')
-        self.logger.info('Localising..')
-        for package in packages:
-            copy_package(package, local_repo, keep_timestamp=True)
-        self.logger.info(f'{len(packages)} packages localised.')
-        self.packagesChanged.emit()
